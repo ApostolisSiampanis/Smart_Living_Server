@@ -21,11 +21,13 @@ def cleanup_user_data(request):
 
     # Firestore references
     user_doc_ref = firestore_db.collection("users").document(uid)
-    environmental_data_ref = firestore_db.collection("environmental_data").document(uid)
+    environmental_data_ref = firestore_db.collection("environmental_data").document(uid).collections()
 
     try:
         user_doc_ref.delete()
-        environmental_data_ref.delete()
+        for collection in environmental_data_ref:
+            for doc in collection.stream():
+                doc.reference.delete()
         print(f"Deleted Firestore data for user: {uid} from 'users' and 'environmental_data' documents")
 
         devices_ref.delete()
