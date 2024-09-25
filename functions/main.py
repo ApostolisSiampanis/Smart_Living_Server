@@ -1,13 +1,40 @@
-# Welcome to Cloud Functions for Firebase for Python!
-# To get started, simply uncomment the below code or create your own.
-# Deploy with `firebase deploy`
-
+import firebase_admin
+from firebase_admin import credentials, firestore, db, auth
 from firebase_functions import https_fn
-from firebase_admin import initialize_app
 
-initialize_app()
-#
-#
-# @https_fn.on_request()
-# def on_request_example(req: https_fn.Request) -> https_fn.Response:
-#     return https_fn.Response("Hello world!")
+firebase_admin.initialize_app()
+
+@https_fn.on_request()
+def cleanup_user_data(request):
+    uid = request.json.get("uid")
+
+    if not uid:
+        return "UID not provided", 400
+
+    # Initialize Firestore Client
+    firestore_db = firestore.client()
+
+    # Realtime Database references
+    devices_ref = db.reference(f"devices/{uid}")
+    rooms_ref = db.reference(f"rooms/{uid}")
+    spaces_ref = db.reference(f"spaces/{uid}")
+
+    try:
+        user_doc_ref = firestore_db.collection("users").document(uid)
+        user_doc_ref.delete()
+        print(f"Deleted Firestore 'users' document for user: {uid}")
+
+        environmental_data_ref = firestore_db.collection("environmental_data").document(uid)
+        environmental_data_ref.delete()
+        print(f"Deleted Firestore 'environmental_data' document for user: {uid}")
+
+        devices_ref.delete()
+        rooms_ref.delete()
+        spaces_ref.delete()
+        print(f"Deleted Realtime Database data for user: {uid} from devices, rooms, and spaces")
+
+        return f"Successfully deleted user data for {uid}", 200
+
+    except Exception as e:
+        print(f"Error deleting user data for {uid}: {str(e)}")
+        return f"Error deleting user data for {uid}: {str(e)}", 500
