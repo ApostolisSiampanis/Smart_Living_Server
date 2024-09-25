@@ -19,14 +19,14 @@ def cleanup_user_data(request):
     rooms_ref = db.reference(f"rooms/{uid}")
     spaces_ref = db.reference(f"spaces/{uid}")
 
-    try:
-        user_doc_ref = firestore_db.collection("users").document(uid)
-        user_doc_ref.delete()
-        print(f"Deleted Firestore 'users' document for user: {uid}")
+    # Firestore references
+    user_doc_ref = firestore_db.collection("users").document(uid)
+    environmental_data_ref = firestore_db.collection("environmental_data").document(uid)
 
-        environmental_data_ref = firestore_db.collection("environmental_data").document(uid)
+    try:
+        user_doc_ref.delete()
         environmental_data_ref.delete()
-        print(f"Deleted Firestore 'environmental_data' document for user: {uid}")
+        print(f"Deleted Firestore data for user: {uid} from 'users' and 'environmental_data' documents")
 
         devices_ref.delete()
         rooms_ref.delete()
