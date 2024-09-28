@@ -1,6 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, firestore, db, auth
 from firebase_functions import https_fn
+from firebase_functions.firestore_fn import on_document_written
 
 firebase_admin.initialize_app()
 
@@ -40,3 +41,43 @@ def cleanup_user_data(request):
     except Exception as e:
         print(f"Error deleting user data for {uid}: {str(e)}")
         return f"Error deleting user data for {uid}: {str(e)}", 500
+
+@on_document_written(document="device_history/{device_id}/{history}/{start_time}")
+def on_device_history_written(event):
+    # Initialize Firestore client
+    firestore_db = firestore.client()
+
+    # Get the document that triggered the function
+    device_id = event.params["device_id"]
+    start_time = event.params["start_time"]
+    document = event.data.after
+
+    if not document:
+        print(f"No document found for device_id: {device_id} and start_time: {start_time}")
+        return
+
+    print(f"Document data: {document}")
+    print(f"Document data (dict): {document.to_dict() if document else 'None'}")
+
+    # Define the new collections
+    new_collections = ["last_week", "last_month", "last_year"]
+
+    try:
+        for new_collection in new_collections:
+            # Reference to the new collection
+            new_collection_ref = firestore_db.collection(new_collection).document(device_id).collection("history").document(
+                start_time)
+
+            # Copy the data to the new collection
+            new_collection_ref.set(document.to_dict())
+
+            # Copy subcollections
+            for subcollection in document.reference.collections():
+                for subdoc in subcollection.stream():
+                    new_subcollection_ref = new_collection_ref.collection(subcollection.id).document(subdoc.id)
+                    new_subcollection_ref.set(subdoc.to_dict())
+
+        print(f"Copied data for device_id: {device_id} and start_time: {start_time} to {', '.join(new_collections)} collections")
+
+    except Exception as e:
+        print(f"Error copying data for device_id: {device_id} and start_time: {start_time}: {str(e)}")
