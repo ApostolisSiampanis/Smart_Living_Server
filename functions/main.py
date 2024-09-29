@@ -42,6 +42,33 @@ def cleanup_user_data(request):
         print(f"Error deleting user data for {uid}: {str(e)}")
         return f"Error deleting user data for {uid}: {str(e)}", 500
 
+def update_total_power_consumption(device_id, firestore_db):
+    periods = ["last_week", "last_month", "last_year"]
+
+    try:
+        for period in periods:
+            # Reference to the history collection
+            history_ref = firestore_db.collection("device_history").document(device_id).collection("history")
+
+            # Sum the power_consumption values
+            total_power_consumption = 0
+            for start_time_doc in history_ref.stream():
+                data = start_time_doc.to_dict()
+                power_consumption_value = data.get("power_consumption")
+                if power_consumption_value is not None:
+                    total_power_consumption += power_consumption_value
+
+            # Reference to the period collection and document
+            period_ref = firestore_db.collection(period).document(device_id)
+
+            # Update the period document with total_power_consumption
+            period_ref.set({"total_power_consumption": total_power_consumption}, merge=True)
+
+            print(f"Updated total_power_consumption for device_id: {device_id} in period: {period} with value: {total_power_consumption}")
+
+    except Exception as e:
+        print(f"Error updating total_power_consumption for device_id: {device_id}: {str(e)}")
+
 @on_document_written(document="device_history/{device_id}/{history}/{start_time}")
 def on_device_history_written(event):
     # Initialize Firestore client
@@ -65,8 +92,7 @@ def on_device_history_written(event):
     try:
         for new_collection in new_collections:
             # Reference to the new collection
-            new_collection_ref = firestore_db.collection(new_collection).document(device_id).collection("history").document(
-                start_time)
+            new_collection_ref = firestore_db.collection(new_collection).document(device_id).collection("history").document(start_time)
 
             # Copy the data to the new collection
             new_collection_ref.set(document.to_dict())
@@ -78,6 +104,9 @@ def on_device_history_written(event):
                     new_subcollection_ref.set(subdoc.to_dict())
 
         print(f"Copied data for device_id: {device_id} and start_time: {start_time} to {', '.join(new_collections)} collections")
+
+        # Update total power consumption
+        update_total_power_consumption(device_id, firestore_db)
 
     except Exception as e:
         print(f"Error copying data for device_id: {device_id} and start_time: {start_time}: {str(e)}")
