@@ -1,7 +1,8 @@
 import firebase_admin
 from firebase_admin import credentials, firestore, db, auth
-from firebase_functions import https_fn
+from firebase_functions import https_fn, scheduler_fn
 from firebase_functions.firestore_fn import on_document_written
+from datetime import datetime, timedelta, timezone
 
 firebase_admin.initialize_app()
 
@@ -48,15 +49,17 @@ def update_total_power_consumption(device_id, firestore_db):
     try:
         for period in periods:
             # Reference to the history collection
-            history_ref = firestore_db.collection("device_history").document(device_id).collection("history")
+            history_ref = firestore_db.collection(period).document(device_id).collection("history")
 
             # Sum the power_consumption values
-            total_power_consumption = 0
+            total_power_consumption = 0.0
             for start_time_doc in history_ref.stream():
                 data = start_time_doc.to_dict()
                 power_consumption_value = data.get("power_consumption")
                 if power_consumption_value is not None:
                     total_power_consumption += power_consumption_value
+
+            total_power_consumption = round(total_power_consumption, 3)
 
             # Reference to the period collection and document
             period_ref = firestore_db.collection(period).document(device_id)
@@ -110,3 +113,64 @@ def on_device_history_written(event):
 
     except Exception as e:
         print(f"Error copying data for device_id: {device_id} and start_time: {start_time}: {str(e)}")
+
+def delete_old_documents(firestore_db, period, device_id, time_limit):
+    history_ref = firestore_db.collection(period).document(device_id).collection("history")
+    for start_time_doc in history_ref.stream():
+        data = start_time_doc.to_dict()
+        end_time_str = data.get("end_time")
+        if end_time_str:
+            try:
+                end_time = datetime.fromisoformat(end_time_str)
+                if end_time < time_limit:
+                    start_time_doc.reference.delete()
+                    print(f"Deleted document for device_id: {device_id} with start_time: {start_time_doc.id}")
+            except ValueError:
+                print(f"Invalid date format for end_time: {end_time_str}")
+
+def update_total_power_consumption_using_scheduler(device_id, firestore_db, period):
+    try:
+        history_ref = firestore_db.collection(period).document(device_id).collection("history")
+
+        # Sum the power_consumption values
+        total_power_consumption = 0.0
+        for start_time_doc in history_ref.stream():
+            data = start_time_doc.to_dict()
+            power_consumption_value = data.get("power_consumption")
+            if power_consumption_value is not None:
+                total_power_consumption += power_consumption_value
+
+        total_power_consumption = round(total_power_consumption, 3)
+
+        # Reference to the period collection and document
+        period_ref = firestore_db.collection(period).document(device_id)
+
+        # Update the period document with total_power_consumption
+        period_ref.set({"total_power_consumption": total_power_consumption}, merge=True)
+
+        print(f"Updated total_power_consumption using scheduler for device_id: {device_id} in period: {period} with value: {total_power_consumption}")
+
+    except Exception as e:
+        print(f"Error updating total_power_consumption using scheduler for device_id: {device_id}: {str(e)}")
+
+@scheduler_fn.on_schedule(schedule="every day 00:00")
+def scheduled_cleanup(event: scheduler_fn.ScheduledEvent) -> None:
+    print(f"Scheduled cleanup started at {datetime.now(timezone.utc)}")
+    # Initialize Firestore client
+    firestore_db = firestore.client()
+
+    # Get the current time in UTC
+    now_utc = datetime.now(timezone.utc)
+    periods = {
+        "last_week": now_utc - timedelta(days=7),
+        "last_month": now_utc - timedelta(days=30),
+        "last_year": now_utc - timedelta(days=365)
+    }
+
+    for period, time_limit in periods.items():
+        device_ids = firestore_db.collection(period).stream()
+        for device_doc in device_ids:
+            device_id = device_doc.id
+            delete_old_documents(firestore_db, period, device_id, time_limit)
+            update_total_power_consumption_using_scheduler(device_id, firestore_db, period)
+    print(f"Scheduled cleanup completed at {datetime.now(timezone.utc)}")
