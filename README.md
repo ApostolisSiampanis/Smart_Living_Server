@@ -18,6 +18,10 @@ The Smart_Living_Server repository provides the server-side logic for managing b
 - **Firestore & Realtime Database:** Both NoSQL databases are used to manage user and device data, ensuring fast and scalable operations.
 - **Python (firebase-functions, firebase-admin):** The Python Firebase SDKs are used to interact with Firebase services and manage backend logic efficiently.
 
+## Application Diagram
+
+![Application Diagram](./images/program_diagram.png)
+
 ## Related Repositories
 
 This project is part of a larger system, consisting of multiple repositories that work together to provide a complete smart energy management solution:
