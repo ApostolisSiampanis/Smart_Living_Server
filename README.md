@@ -18,6 +18,37 @@ The Smart_Living_Server repository provides the server-side logic for managing b
 - **Firestore & Realtime Database:** Both NoSQL databases are used to manage user and device data, ensuring fast and scalable operations.
 - **Python (firebase-functions, firebase-admin):** The Python Firebase SDKs are used to interact with Firebase services and manage backend logic efficiently.
 
+## Realtime Database
+
+### Spaces Schema
+![Spaces Schema](./images/realtime_database/spaces_model.png)
+
+### Rooms Schema
+![Rooms Schema](./images/realtime_database/rooms_model.png)
+
+### Devices Schema
+![Devices Schema](./images/realtime_database/devices_model.png)
+
+## Firestore
+
+### Users Schema
+![Users Schema](./images/firestore/users_model.png)
+
+### Environmental Data Schema
+![Environmental Data Schema](./images/firestore/environment_data_model.png)
+
+### Device History Schema
+![Device History Schema](./images/firestore/device_history_model.png)
+
+### Last Week Schema
+![Last Week Schema](./images/firestore/last_week_model.png)
+
+### Last Month Schema
+![Last Month Schema](./images/firestore/last_month_model.png)
+
+### Last Year Schema
+![Last Year Schema](./images/firestore/last_year_model.png)
+
 ## Application Diagram
 
 ![Application Diagram](./images/program_diagram.png)
