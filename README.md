@@ -49,6 +49,27 @@ The Smart_Living_Server repository provides the server-side logic for managing b
 ### Last Year Schema
 ![Last Year Schema](./images/firestore/last_year_model.png)
 
+## Setup Instructions
+
+1. Clone the backend repository:
+
+    ```bash
+    git clone https://github.com/ApostolisSiampanis/Smart_Living_Server.git
+    ```
+
+2. Install Firebase CLI tools:
+
+    ```bash
+    firebase login
+    firebase init
+    ```
+
+3. Deploy the functions to Firebase:
+
+    ```bash
+    firebase deploy --only functions
+    ```
+
 ## Application Diagram
 
 ![Application Diagram](./images/program_diagram.png)
